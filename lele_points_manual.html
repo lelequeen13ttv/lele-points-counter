@@ -28,7 +28,7 @@
     const counterElement = document.getElementById('counter');
     const streamerUsername = "lelequeen13"; // Your Twitch username (lowercase)
     const channel = `#${streamerUsername}`; // Your channel (e.g., #lelequeen13ttv)
-    const oauthToken = "oauth:z641vhmf9hegx4n3vg6l6s595udeph"; // Your token with oauth: prefix
+    const oauthToken = "oauth:z641vhmf9hegx4n3vg6l6s595udeph"; // Your token
 
     function updateCounter() {
       counterElement.textContent = `Lele points: ${count}`;
@@ -47,6 +47,8 @@
 
     socket.onmessage = (event) => {
       const message = event.data.trim();
+      console.log("Raw message:", message); // Log every message received
+
       if (message.startsWith("PING")) {
         socket.send("PONG :tmi.twitch.tv");
         return;
@@ -56,22 +58,27 @@
       const parts = message.split(" ");
       if (parts.length < 4 || parts[1] !== "PRIVMSG") return;
 
-      // Extract tags (e.g., mod status, username)
-      const tagsRaw = message.split(" ")[0].substring(1); // Tags start with @
+      // Extract tags
+      const tagsRaw = message.split(" ")[0].substring(1);
       const tags = {};
       tagsRaw.split(";").forEach(tag => {
         const [key, value] = tag.split("=");
         tags[key] = value;
       });
 
-      const sender = parts[0].split("!")[0].substring(1).toLowerCase(); // Username
-      const chatMessage = parts.slice(3).join(" ").substring(1); // Message content
-      const isMod = tags.mod === "1" || sender === streamerUsername; // Mod or streamer
+      const sender = parts[0].split("!")[0].substring(1).toLowerCase();
+      const chatMessage = parts.slice(3).join(" ").substring(1);
+      const isMod = tags.mod === "1" || sender === streamerUsername;
+
+      console.log("Sender:", sender); // Log who sent the message
+      console.log("Message content:", chatMessage); // Log the chat text
+      console.log("Is mod?:", isMod); // Log mod/streamer status
 
       // Check for commands
       const commandMatch = chatMessage.match(/^!(addpoints|ap)\s+(\d+)$/i);
       if (commandMatch && isMod) {
         const pointsToAdd = parseInt(commandMatch[2], 10);
+        console.log("Command matched:", commandMatch[1], "Points:", pointsToAdd); // Log command details
         if (!isNaN(pointsToAdd) && pointsToAdd > 0) {
           count += pointsToAdd;
           updateCounter();
