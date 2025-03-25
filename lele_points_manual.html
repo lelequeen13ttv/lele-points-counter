@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Lele Points Manual Counter</title>
+  <link href="https://fonts.googleapis.com/css?family=Lilita+One" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: transparent;
+      overflow: hidden;
+      font-family: 'Lilita One', sans-serif;
+    }
+    #counter {
+      font-size: 60px;
+      color: #febae6;
+      -webkit-text-stroke: 3px #e2237d;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="counter">Lele points: 0</div>
+
+  <script>
+    let count = 0;
+    const counterElement = document.getElementById('counter');
+    const streamerUsername = "lelequeen13"; // Your Twitch username (lowercase)
+    const channel = `#${streamerUsername}`; // Your channel (e.g., #lelequeen13ttv)
+    const oauthToken = "oauth:z641vhmf9hegx4n3vg6l6s595udeph"; // Your token with oauth: prefix
+
+    function updateCounter() {
+      counterElement.textContent = `Lele points: ${count}`;
+    }
+
+    // Connect to Twitch IRC
+    const socket = new WebSocket("wss://irc-ws.chat.twitch.tv:443");
+
+    socket.onopen = () => {
+      socket.send(`PASS ${oauthToken}`);
+      socket.send(`NICK ${streamerUsername}`);
+      socket.send(`JOIN ${channel}`);
+      socket.send("CAP REQ :twitch.tv/tags"); // Request tags for mod status
+      console.log("Connected to Twitch IRC");
+    };
+
+    socket.onmessage = (event) => {
+      const message = event.data.trim();
+      if (message.startsWith("PING")) {
+        socket.send("PONG :tmi.twitch.tv");
+        return;
+      }
+
+      // Parse IRC message
+      const parts = message.split(" ");
+      if (parts.length < 4 || parts[1] !== "PRIVMSG") return;
+
+      // Extract tags (e.g., mod status, username)
+      const tagsRaw = message.split(" ")[0].substring(1); // Tags start with @
+      const tags = {};
+      tagsRaw.split(";").forEach(tag => {
+        const [key, value] = tag.split("=");
+        tags[key] = value;
+      });
+
+      const sender = parts[0].split("!")[0].substring(1).toLowerCase(); // Username
+      const chatMessage = parts.slice(3).join(" ").substring(1); // Message content
+      const isMod = tags.mod === "1" || sender === streamerUsername; // Mod or streamer
+
+      // Check for commands
+      const commandMatch = chatMessage.match(/^!(addpoints|ap)\s+(\d+)$/i);
+      if (commandMatch && isMod) {
+        const pointsToAdd = parseInt(commandMatch[2], 10);
+        if (!isNaN(pointsToAdd) && pointsToAdd > 0) {
+          count += pointsToAdd;
+          updateCounter();
+          console.log(`${sender} added ${pointsToAdd} points`);
+        }
+      }
+    };
+
+    socket.onerror = (error) => console.error("IRC error:", error);
+    socket.onclose = () => console.log("IRC connection closed");
+
+    updateCounter();
+  </script>
+</body>
+</html>
