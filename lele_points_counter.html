@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Streamlabs Lele Points Counter</title>
+  <link href="https://fonts.googleapis.com/css?family=Lilita+One" rel="stylesheet">
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: transparent;
+      overflow: hidden;
+      font-family: 'Lilita One', sans-serif;
+    }
+    #counter {
+      font-size: 60px;
+      color: #febae6; /* From your timerColor */
+      -webkit-text-stroke: 3px #e2237d; /* From timerStrokeWidth, timerStrokeColor */
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="counter">Lele points: 0</div>
+
+  <script>
+    // Initial counter value
+    let count = 0;
+    const counterElement = document.getElementById('counter');
+
+    // Function to update display
+    function updateCounter() {
+      counterElement.textContent = `Lele points: ${count}`;
+    }
+
+    // Streamlabs Socket API Integration
+    const socketToken = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbiI6IjJGREM3RjZDQTNBRjBGQzVBQjdGIiwicmVhZF9vbmx5Ijp0cnVlLCJwcmV2ZW50X21hc3RlciI6dHJ1ZSwidHdpdGNoX2lkIjoiNDgwMTI2MjE5Iiwic3RyZWFtbGFic19pZCI6IjcyMTMxNDEyMzk2NjE1OTI1NzYifQ.DyKLe_8eORjQRG04GhixLbbnApIxIYbZnBuztp5E2TE";
+    const socket = new WebSocket(`wss://sockets.streamlabs.com?token=${socketToken}`);
+
+    socket.onopen = () => {
+      console.log("Connected to Streamlabs Socket API");
+    };
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      console.log("Event received:", data); // For debugging
+
+      if (data.event === "donation" && data.message[0].amount) {
+        let amount = Math.floor(parseFloat(data.message[0].amount)); // Round down to nearest dollar
+        count += amount; // +1 per $1
+        updateCounter();
+      } else if (data.event === "subscription" && data.message[0].sub_type === "sub") {
+        count += 2; // +2 for sub
+        updateCounter();
+      } else if (data.event === "bits" && data.message[0].amount) {
+        let bits = parseInt(data.message[0].amount);
+        count += Math.floor(bits / 100); // +1 per 100 bits
+        updateCounter();
+      }
+    };
+
+    socket.onerror = (error) => console.error("Socket error:", error);
+    socket.onclose = () => console.log("Socket closed");
+
+    // Initial display
+    updateCounter();
+  </script>
+</body>
+</html>
